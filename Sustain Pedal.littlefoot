@@ -1,0 +1,66 @@
+/*
+Sustain Pedal
+Jeffrey Lim
+
+Z-Axis: MIDI sustain pedal
+    
+<metadata description="Sustain Pedal for Lightpad Block" details="Sustain Pedal for Lightpad Block." target="Lightpad" tags="Controller;MIDI" canEmbedModes="false">
+    
+    <groups>
+        <group name="colors" displayName="Colors" />
+    </groups>
+
+    <variables>
+        <variable name="channel" displayName="MIDI Channel" type="int" min="1" max="16" value="1" displayMode="stepper" tooltip="The MIDI channel that values are sent on" />
+        <variable name="cc" displayName="MIDI CC" type="cc" min="1" max="127" value="64" displayMode="stepper" tooltip="The MIDI cc sent when the pedal is active" />
+        <variable name="sensitivity" type="float" min="0" max="1" value="0.5" visible="true" tooltip="The pressure required before turning on the pedal"/>
+        <variable name="onColor" group="colors" displayName="On color" type="colour" value="0x000040" tooltip="The color when the sustain pedal is on"/>
+        <variable name="offColor" group="colors" displayName="Off color" type="colour" value="0x000000" tooltip="The color when the sustain pedal is off"/>
+    </variables>
+
+</metadata>
+*/
+
+bool isSustainOn;
+int sustainOnMask;
+ 
+// API function called on start
+void initialise() {
+  isSustainOn = false;
+  sustainOnMask = 0;
+}
+
+void updateSustain(int index, float x, float y, float z, float vz) {
+  bool wasSustainOn = isSustainOn;
+  
+  if (z >= sensitivity) {
+    sustainOnMask = sustainOnMask | (1 << index);
+  }
+  else {
+    sustainOnMask = sustainOnMask & ~(1 << index);
+  }
+  isSustainOn = sustainOnMask != 0;
+  if (isSustainOn != wasSustainOn) {
+    sendCC(channel-1, cc, isSustainOn ? 127 : 0);
+  }
+}
+
+// API function called at the onset of a touch series
+void touchStart (int index, float x, float y, float z, float vz) {
+  updateSustain(index, x, y, z, vz);
+}
+
+// API function called whenever the touch moves
+void touchMove (int index, float x, float y, float z, float vz) {
+  updateSustain(index, x, y, z, vz);
+}
+
+// API function called whenever the touch series ends
+void touchEnd (int index, float x, float y, float z, float vz) {
+  updateSustain(index, x, y, -1.0, vz);
+}
+
+void repaint() {
+  fillRect(isSustainOn ? onColor : offColor, 0, 0, 15, 15);
+}
+
